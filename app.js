@@ -47,6 +47,11 @@ io.on('connection', function (socket) {
     });
 
 
+    //main v2
+    socket.on("RTCDataChannel", function (data) {
+        socket.broadcast.emit("RTCDataChannel", data);
+    });
+
 });
 
 
