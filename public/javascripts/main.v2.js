@@ -17,58 +17,63 @@ var RTCDataChannels = [];
 var id = null;
 var signalingChannel = io();
 var SOCKET = {
-    sendOfferSdp: function (offerSdp) {
-        signalingChannel.emit("RTCDataChannel", {offerSdp: offerSdp, from: window.ID});
+    sendOfferSdp: function (offerSdp,target) {
+        signalingChannel.emit("RTCDataChannel", {offerSdp: offerSdp, from: window.ID,target: target});
     },
-    sendAnswerSdp: function (answerSdp) {
-        signalingChannel.emit("RTCDataChannel", {answerSdp: answerSdp, from: window.ID});
+    sendAnswerSdp: function (answerSdp,target) {
+        signalingChannel.emit("RTCDataChannel", {answerSdp: answerSdp, from: window.ID,target: target});
     },
-    sendIce: function (ice, to) {
-        signalingChannel.emit("RTCDataChannel", {ice: ice, from: window.ID, to: to});
+    sendIce: function (ice, target) {
+        signalingChannel.emit("RTCDataChannel", {ice: ice, from: window.ID, target: target});
     }
 }
 
 signalingChannel.on("RTCDataChannel", function (data) {
     if (data.from == window.ID) {
-        console.log("form me", data.from);
+        console.log("from me", data);
         return;
     }
     var nowDate = new Date();
-    // if other user created offer; and sent you offer-sdp
-    if (data.offerSdp) {
-        if (!window.answerer[data.from]) {
-            console.log("====offerSdp====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
-            window.answerer[data.from] = {peer: Answerer.createAnswer(data.offerSdp, data.from), addIce: false};
-        }
-    } else
-    // if other user created answer; and sent you answer-sdp
-    if (data.answerSdp) {
-        if (window.offerer[data.from]) {
-            console.log("====answerSdp====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.offerer);
-            window.offerer[data.from].peer.setRemoteDescription(data.answerSdp);
-        }
-    } else
-    // if other user sent you ice candidates
-    if (data.ice) {
-        // it will be fired both for offerer and answerer
-        console.log(data);
-        console.log(window.answerer);
-        if (data.to) {
-            console.log("====ice====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
-            window.answerer[data.from].peer.addIceCandidate(data.ice);
-        }else{
-            if (window.answerer[data.from] && !window.answerer[data.from].addIce) {
-                console.log("====ice====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
+
+    if (data.target == window.ID) {
+        // if other user created offer; and sent you offer-sdp
+        if (data.offerSdp) {
+            if (!window.answerer[data.from]) {
+                console.log("====offerSdp====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
+                window.answerer[data.from] = {peer: Answerer.createAnswer(data.offerSdp, data.from), addIce: false};
+            }
+        } else
+        // if other user created answer; and sent you answer-sdp
+        if (data.answerSdp) {
+            if (window.offerer[data.from]) {
+                console.log("====answerSdp====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.offerer);
+                window.offerer[data.from].peer.setRemoteDescription(data.answerSdp);
+            }
+        } else
+        // if other user sent you ice candidates
+        if (data.ice) {
+            // it will be fired both for offerer and answerer
+            console.log(data);
+            console.log(window.answerer);
+            console.log(window.offerer);
+            if (window.answerer[data.from] ) {
+                console.log("====ice answerer====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
                 window.answerer[data.from].peer.addIceCandidate(data.ice);
                 window.answerer[data.from].addIce = true;
+            }else if(window.offerer[data.from]){
+                console.log("====ice offerer====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.offerer);
+                window.offerer[data.from].peer.addIceCandidate(data.ice);
             }
+        } else {
+
         }
-    } else {
+    } else if(!data.target){
+        console.log(data);
         console.log(window.answerer);
         console.log(window.offerer);
         if (!window.answerer[data.from]) {
             console.log("====  createOffer   ====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds());
-            window.offerer[data.from] = {peer: Offerer.createOffer()};
+            window.offerer[data.from] = {peer: Offerer.createOffer(data.from)};
         }
     }
 });
@@ -89,14 +94,14 @@ function failureCallback(data) {
     console.log(data);
 }
 var Offerer = {
-    createOffer: function () {
+    createOffer: function (target) {
         var peer = new PeerConnection(iceServers);
 
         // send any ice candidates to the other peer
         peer.onicecandidate = function (event) {
             console.log("peer.onicecandidate");
             if (event.candidate) {
-                SOCKET.sendIce(event.candidate);
+                SOCKET.sendIce(event.candidate, target);
             }
         };
 
@@ -114,7 +119,7 @@ var Offerer = {
         setChannelEvents(offererDataChannel);
         peer.createOffer(function (sdp) {
             peer.setLocalDescription(sdp);
-            SOCKET.sendOfferSdp(sdp);
+            SOCKET.sendOfferSdp(sdp,target);
         }, failureCallback);
         this.peer = peer;
         return this;
@@ -130,7 +135,7 @@ var Offerer = {
 }
 
 var Answerer = {
-    createAnswer: function (offerSDP, to) {
+    createAnswer: function (offerSDP, target) {
         var peer = new PeerConnection(iceServers);
         peer.ondatachannel = function (event) {
             var answererDataChannel = event.channel;
@@ -143,7 +148,7 @@ var Answerer = {
 
         peer.onicecandidate = function (event) {
             if (event.candidate) {
-                SOCKET.sendIce(event.candidate, to);
+                SOCKET.sendIce(event.candidate, target);
             }
         };
 
@@ -151,7 +156,7 @@ var Answerer = {
 
         peer.createAnswer(function (sdp) {
             peer.setLocalDescription(sdp);
-            SOCKET.sendAnswerSdp(sdp);
+            SOCKET.sendAnswerSdp(sdp,target);
         }, failureCallback);
 
         this.peer = peer;
