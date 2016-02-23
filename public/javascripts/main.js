@@ -129,7 +129,24 @@ function start(target, targetPcid, offersdp) {
             channel.binaryType = 'blob';
 
         setChannelEvents(target);
+        createOffer(target);
+    }
 
+
+    function openAnswererChannel(target) {
+        console.log("===========openAnswererChannel============");
+
+        pc.ondatachannel = function (event) {
+            channel = event.channel;
+            if (moz)
+                channel.binaryType = 'blob';
+            setChannelEvents(target);
+        };
+
+        //if (!moz) return;
+        createAnswer(target);
+    }
+    function createOffer(target) {
         console.log("==========createOffer====================");
         pc.createOffer(function (sessionDescription) {
             pc.setLocalDescription(sessionDescription);
@@ -147,22 +164,6 @@ function start(target, targetPcid, offersdp) {
 
         }, onSdpError);
     }
-
-
-    function openAnswererChannel(target) {
-        console.log("===========openAnswererChannel============");
-
-        pc.ondatachannel = function (event) {
-            channel = event.channel;
-            if (moz)
-                channel.binaryType = 'blob';
-            setChannelEvents(target);
-        };
-
-        //if (!moz) return;
-        createAnswer(target);
-    }
-
     function createAnswer(target) {
         console.log("==========createAnswer====================");
         console.log(offersdp);
@@ -171,7 +172,7 @@ function start(target, targetPcid, offersdp) {
         pc.createAnswer(function (sessionDescription) {
             //sessionDescription.sdp = setBandwidth(sessionDescription.sdp);
             pc.setLocalDescription(sessionDescription);
-
+            console.log(sessionDescription);
             var sendMessage = {
                 type: sessionDescription.type,
                 sdp: sessionDescription.sdp,

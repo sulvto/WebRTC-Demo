@@ -11,69 +11,111 @@ var PeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection ||
 
     IceCandidate = window.mozRTCIceCandidate || window.RTCIceCandidate;
 
+window.answerer = [];
+window.offerer = [];
 var RTCDataChannels = [];
 var id = null;
+var signalingChannel = io();
 var SOCKET = {
     sendOfferSdp: function (offerSdp) {
-        io().emit("RTCDataChannel", {offerSdp: offerSdp});
+        signalingChannel.emit("RTCDataChannel", {offerSdp: offerSdp, from: window.ID});
     },
     sendAnswerSdp: function (answerSdp) {
-        io().emit("RTCDataChannel", {answerSdp: answerSdp});
+        signalingChannel.emit("RTCDataChannel", {answerSdp: answerSdp, from: window.ID});
     },
-    sendIce: function (ice) {
-        io().emit("RTCDataChannel", {ice: ice});
+    sendIce: function (ice, to) {
+        signalingChannel.emit("RTCDataChannel", {ice: ice, from: window.ID, to: to});
     }
 }
-io().on("RTCDataChannel", function (data) {
-    console.log(data);
+
+signalingChannel.on("RTCDataChannel", function (data) {
+    if (data.from == window.ID) {
+        console.log("form me", data.from);
+        return;
+    }
+    var nowDate = new Date();
     // if other user created offer; and sent you offer-sdp
     if (data.offerSdp) {
-        window.answerer = Answerer.createAnswer(data.offerSdp);
-    }
-
+        if (!window.answerer[data.from]) {
+            console.log("====offerSdp====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
+            window.answerer[data.from] = {peer: Answerer.createAnswer(data.offerSdp, data.from), addIce: false};
+        }
+    } else
     // if other user created answer; and sent you answer-sdp
     if (data.answerSdp) {
-        window.offerer.setRemoteDescription(data.answerSdp);
-    }
-
+        if (window.offerer[data.from]) {
+            console.log("====answerSdp====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.offerer);
+            window.offerer[data.from].peer.setRemoteDescription(data.answerSdp);
+        }
+    } else
     // if other user sent you ice candidates
     if (data.ice) {
         // it will be fired both for offerer and answerer
-        (window.answerer || window.offerer).addIceCandidate(data.ice);
+        console.log(data);
+        console.log(window.answerer);
+        if (data.to) {
+            console.log("====ice====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
+            window.answerer[data.from].peer.addIceCandidate(data.ice);
+        }else{
+            if (window.answerer[data.from] && !window.answerer[data.from].addIce) {
+                console.log("====ice====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
+                window.answerer[data.from].peer.addIceCandidate(data.ice);
+                window.answerer[data.from].addIce = true;
+            }
+        }
+    } else {
+        console.log(window.answerer);
+        console.log(window.offerer);
+        if (!window.answerer[data.from]) {
+            console.log("====  createOffer   ====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds());
+            window.offerer[data.from] = {peer: Offerer.createOffer()};
+        }
     }
+});
+
+signalingChannel.emit("ID", {});
+
+signalingChannel.on("ID", function (data) {
+    window.ID = data.replace("/#", "");
+    $("#panel .panel-title").text(ID);
 });
 
 
 //========================================================
 var iceServers = {"iceServers": [{"url": "stun:stun.l.google.com:19302"}]};
-var offererDataChannel, answererDataChannel;
 
+function failureCallback(data) {
+    //TODO error
+    console.log(data);
+}
 var Offerer = {
     createOffer: function () {
         var peer = new PeerConnection(iceServers);
 
-        offererDataChannel = peer.createDataChannel('RTCDataChannel', moz ? {} : {
-            reliable: false // Deprecated
-        });
-        setChannelEvents(offererDataChannel);
         // send any ice candidates to the other peer
         peer.onicecandidate = function (event) {
-            console.log("pc.onicecandidate");
+            console.log("peer.onicecandidate");
             if (event.candidate) {
-                console.log(event.candidate);
                 SOCKET.sendIce(event.candidate);
             }
         };
 
         // let the "negotiationneeded" event trigger offer generation
         peer.onnegotiationneeded = function () {
-            console.log("pc.onnegotiationneeded");
+            console.log("peer.onnegotiationneeded");
         };
 
+        var offererDataChannel = peer.createDataChannel('RTCDataChannel', moz ? {} : {
+            reliable: false // Deprecated
+        });
+        if (moz) {
+            offererDataChannel.binaryType = 'blob';
+        }
+        setChannelEvents(offererDataChannel);
         peer.createOffer(function (sdp) {
             peer.setLocalDescription(sdp);
             SOCKET.sendOfferSdp(sdp);
-        });
+        }, failureCallback);
         this.peer = peer;
         return this;
     }, setRemoteDescription: function (sdp) {
@@ -88,17 +130,20 @@ var Offerer = {
 }
 
 var Answerer = {
-    createAnswer: function (offerSDP) {
+    createAnswer: function (offerSDP, to) {
         var peer = new PeerConnection(iceServers);
         peer.ondatachannel = function (event) {
-            answererDataChannel = event.channel;
+            var answererDataChannel = event.channel;
+            if (moz) {
+                answererDataChannel.binaryType = 'blob';
+            }
+
             setChannelEvents(answererDataChannel);
         };
 
         peer.onicecandidate = function (event) {
             if (event.candidate) {
-                console.log(event.candidate);
-                SOCKET.sendIce(event.candidate);
+                SOCKET.sendIce(event.candidate, to);
             }
         };
 
@@ -107,7 +152,7 @@ var Answerer = {
         peer.createAnswer(function (sdp) {
             peer.setLocalDescription(sdp);
             SOCKET.sendAnswerSdp(sdp);
-        });
+        }, failureCallback);
 
         this.peer = peer;
         return this;
@@ -123,11 +168,13 @@ var Answerer = {
 function setChannelEvents(channel) {
     channel.onmessage = function (event) {
         console.log('WebRTC DataChannel onmessage', event);
+        onMsg(event.data);
     };
 
     channel.onopen = function () {
+        console.log(channel);
         RTCDataChannels[RTCDataChannels.length] = channel;
-
+        //TODO
         console.log("====ONOPEN====ONOPEN====ONOPEN====ONOPEN====ONOPEN====");
     };
     channel.onclose = function (event) {
@@ -139,16 +186,50 @@ function setChannelEvents(channel) {
 }
 
 
-var offerer = Offerer.createOffer();
-
 function channelSend(data) {
     var length = RTCDataChannels.length;
 
     for (var i = 0; i < length; i++) {
         var channel = RTCDataChannels[i];
         if (channel.readyState == 'open') {
-            channel.send(JSON.stringify(data));
+            channel.send(data);
         }
     }
 }
-//=============================================
+
+//=====================================================================
+
+//TODO temp
+var start = window.setInterval(function () {
+    if (window.ID) {
+        var nowDate = new Date();
+        console.log("====  send from   ====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds());
+
+        signalingChannel.emit("RTCDataChannel", {from: window.ID});
+        clearInterval(start);
+    }
+}, 3000);
+
+function showMsgToPanel(message, me) {
+    if (me) {
+        $("#panel .panel-body").append("<p class='text-right'>" + message + "</p>")
+    } else {
+        $("#panel .panel-body").append("<p class='text-left'>" + message + "</p>")
+    }
+}
+
+function onMsg(msg) {
+    if (msg) {
+        showMsgToPanel(msg, false);
+    }
+}
+function sendMsg() {
+    var msg = $("#input").val();
+    channelSend(msg);
+    showMsgToPanel(msg, true);
+    $("#input").val("");
+}
+
+window.setInterval(function () {
+    console.log("RTCDataChannels :: " + RTCDataChannels.length);
+}, 10000);

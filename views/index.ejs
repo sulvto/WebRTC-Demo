@@ -1,31 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <title><%= title %></title>
-    <link rel='stylesheet' href='/stylesheets/style.css'/>
-    <link href="//cdn.bootcss.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel='stylesheet' href='/stylesheets/bootstrap.min.css'/>
 </head>
 <body>
-<h1><%= title %></h1>
-<p>Welcome to <%= title %></p>
+<nav class="navbar navbar-default ">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="#">Demo</a>
+        </div>
+    </div>
+</nav>
 
-<div class="row">
-    <div class="col-lg-6">
-    </div><!-- /.col-lg-6 -->
-    <div class="col-lg-6">
-        <div class="input-group">
-            <input id="input" type="text"  class="form-control"  >
-      <span class="input-group-btn">
-        <button class="btn btn-default" type="button" onclick="channelSend($('input').val())">Go!</button>
-      </span>
-        </div><!-- /input-group -->
-    </div><!-- /.col-lg-6 -->
-</div><!-- /.row -->
+<div class="container">
 
+    <div class="row">
+        <div class="col-lg-6">
+
+            <div id="panel" class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Panel title</h3>
+                </div>
+                <div id="panel-body" class="panel-body" style="height: 400px;overflow-y: scroll">
+
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-lg-10">
+                            <input id="input" class="form-control"/>
+                        </div>
+                        <div class="col-lg-2">
+                            <button type="button" class="btn btn-default" onclick="sendMsg()">发送</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div><!-- /.col-lg-6 -->
+        <div class="col-lg-6">
+
+        </div><!-- /.col-lg-6 -->
+    </div><!-- /.row -->
+
+
+</div>
 </body>
-<script src="//cdn.bootcss.com/jquery/2.2.0/jquery.min.js"></script>
-<script src="//cdn.bootcss.com/socket.io/1.4.5/socket.io.js"></script>
-<script src="//cdn.bootcss.com/bootstrap/4.0.0-alpha.2/js/bootstrap.min.js"></script>
+<script src="/javascripts/jquery.min.js"></script>
+<script src="/javascripts/socket.io.js"></script>
+<script src="/javascripts/bootstrap.min.js"></script>
+<script src="/javascripts/angular.min.js"></script>
 
+<!--<script src="/javascripts/main.js"></script>-->
 <script src="/javascripts/main.v2.js"></script>
+<!--<script src="/javascripts/app.js"></script>-->
 </html>

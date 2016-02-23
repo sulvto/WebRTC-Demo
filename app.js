@@ -21,9 +21,7 @@ server.listen(8000);
 var socketList = [];
 // socket on
 io.on('connection', function (socket) {
-    socketList[socketList.length] = socket;
-    //console.log(io);
-    //console.log(socket);
+
     console.log("connection");
     socket.broadcast.emit("new", "hello");
 
@@ -34,6 +32,7 @@ io.on('connection', function (socket) {
     socket.on("onicecandidate", function (msg) {
         socket.broadcast.emit("onicecandidate", msg);
     });
+
     socket.on("pcid", function (msg) {
         socket.broadcast.emit("pcid", msg);
     });
@@ -52,6 +51,10 @@ io.on('connection', function (socket) {
         socket.broadcast.emit("RTCDataChannel", data);
     });
 
+    socket.on("ID", function (data) {
+        console.log(socket);
+        socket.emit("ID", socket.id);
+    });
 });
 
 
