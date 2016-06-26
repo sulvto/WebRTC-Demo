@@ -1,5 +1,5 @@
 /**
- * Created by sulvto on 16-1-30.
+ * Created by sulvto on 16-1-31.
  */
 window.moz = !!navigator.mozGetUserMedia;
 
@@ -39,40 +39,33 @@ signalingChannel.on("RTCDataChannel", function (data) {
         // if other user created offer; and sent you offer-sdp
         if (data.offerSdp) {
             if (!window.answerer[data.from]) {
-                console.log("====offerSdp====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
-                window.answerer[data.from] = {peer: Answerer.createAnswer(data.offerSdp, data.from), addIce: false};
+                console.log("====offerSdp====" + nowDate.toLocaleTimeString() + " " + nowDate.getMilliseconds(), window.answerer);
+                window.answerer[data.from] = {peer: Answerer.createAnswer(data.offerSdp, data.from)};
             }
         } else
         // if other user created answer; and sent you answer-sdp
         if (data.answerSdp) {
             if (window.offerer[data.from]) {
-                console.log("====answerSdp====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.offerer);
+                console.log("====answerSdp====" + nowDate.toLocaleTimeString() + " " + nowDate.getMilliseconds(), window.offerer);
                 window.offerer[data.from].peer.setRemoteDescription(data.answerSdp);
             }
         } else
         // if other user sent you ice candidates
         if (data.ice) {
             // it will be fired both for offerer and answerer
-            console.log(data);
-            console.log(window.answerer);
-            console.log(window.offerer);
             if (window.answerer[data.from] ) {
-                console.log("====ice answerer====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.answerer);
+                console.log("====ice answerer====" + nowDate.toLocaleTimeString() + " " + nowDate.getMilliseconds(), window.answerer);
                 window.answerer[data.from].peer.addIceCandidate(data.ice);
-                window.answerer[data.from].addIce = true;
             }else if(window.offerer[data.from]){
-                console.log("====ice offerer====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds(), window.offerer);
+                console.log("====ice offerer====" + nowDate.toLocaleTimeString() + " " + nowDate.getMilliseconds(), window.offerer);
                 window.offerer[data.from].peer.addIceCandidate(data.ice);
             }
         } else {
 
         }
     } else if(!data.target){
-        console.log(data);
-        console.log(window.answerer);
-        console.log(window.offerer);
         if (!window.answerer[data.from]) {
-            console.log("====  createOffer   ====" + nowDate.getMinutes() + " " + nowDate.getMilliseconds());
+            console.log("====  createOffer   ====" + nowDate.toLocaleTimeString() + " " + nowDate.getMilliseconds());
             window.offerer[data.from] = {peer: Offerer.createOffer(data.from)};
         }
     }
@@ -203,6 +196,12 @@ function channelSend(data) {
 }
 
 //=====================================================================
+$("#input").keyup(function(data) {
+    //Enter
+    if(data.keyCode==13) {
+        sendMsg();
+    }
+});
 
 //TODO temp
 var start = window.setInterval(function () {
@@ -217,10 +216,11 @@ var start = window.setInterval(function () {
 
 function showMsgToPanel(message, me) {
     if (me) {
-        $("#panel .panel-body").append("<p class='text-right'>" + message + "</p>")
+        $("#panel .panel-body").append("<p class='text-right'>" + message + "</p>");
     } else {
-        $("#panel .panel-body").append("<p class='text-left'>" + message + "</p>")
+        $("#panel .panel-body").append("<p class='text-left'>" + message + "</p>");
     }
+    $("#panel .panel-body").scrollTop(Number.MAX_VALUE);
 }
 
 function onMsg(msg) {
