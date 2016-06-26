@@ -18,33 +18,11 @@ var server = http.createServer(app);
 var io = socket.listen(server);
 server.listen(8000);
 
-var socketList = [];
+
 // socket on
 io.on('connection', function (socket) {
 
-    console.log("connection");
     socket.broadcast.emit("new", "hello");
-
-    socket.on("id", function (msg) {
-        socket.broadcast.emit("id", socket.id);
-    });
-
-    socket.on("onicecandidate", function (msg) {
-        socket.broadcast.emit("onicecandidate", msg);
-    });
-
-    socket.on("pcid", function (msg) {
-        socket.broadcast.emit("pcid", msg);
-    });
-
-    socket.on("createOffer", function (msg) {
-        socket.broadcast.emit("createOffer", msg);
-    });
-
-    socket.on("createAnswer", function (msg) {
-        socket.broadcast.emit("createAnswer", msg);
-    });
-
 
     //main v2
     socket.on("RTCDataChannel", function (data) {
@@ -52,7 +30,6 @@ io.on('connection', function (socket) {
     });
 
     socket.on("ID", function (data) {
-        console.log(socket);
         socket.emit("ID", socket.id);
     });
 });
