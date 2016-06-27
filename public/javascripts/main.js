@@ -79,6 +79,7 @@ signalingChannel.emit("ID", {});
 signalingChannel.on("ID", function (data) {
     window.ID = data.replace("/#", "");
     $("#panel .panel-title").text(ID);
+    $("#username").val(ID);
 });
 
 
@@ -117,13 +118,14 @@ var WebRTCPeerConnection = {
             console.log("peer.onnegotiationneeded");
         };
 
+        var that = this;
         // answer
         peer.ondatachannel = function (event) {
             var answererDataChannel = event.channel;
             if (moz) {
                 answererDataChannel.binaryType = 'blob';
             }
-            this.setChannelEvents(answererDataChannel);
+            that.setChannelEvents(answererDataChannel);
         };
 
         return peer;
@@ -134,7 +136,6 @@ var WebRTCPeerConnection = {
         };
 
         channel.onopen = function () {
-            console.log(channel);
             RTCDataChannels[RTCDataChannels.length] = channel;
 
             //TODO
@@ -187,9 +188,13 @@ var WebRTCPeerConnection = {
 
 
 function attachStream(stream, id) {
+    console.log("attachStream", stream);
+
     var newVideo = document.createElement("video");
     newVideo.setAttribute("class", "other");
     newVideo.setAttribute("autoplay", "autoplay");
+    newVideo.setAttribute("width", "100px");
+    newVideo.setAttribute("height", "100px");
     newVideo.setAttribute("id", "other-" + id);
     document.getElementById("videos").appendChild(newVideo);
 
@@ -198,6 +203,22 @@ function attachStream(stream, id) {
         newVideo.play();
     }
     newVideo.src = URL.createObjectURL(stream);
+
+    stream.onended = function (event) {
+        console.log('onended', event);
+    };
+    stream.onremovetrack = function (event) {
+        console.log('onremovetrack', event);
+    };
+    stream.onactive = function (event) {
+        console.log('onactive', event);
+    };
+    stream.onaddtrack = function (event) {
+        console.log('onaddtrack', event);
+    };
+    stream.oninactive = function (event) {
+        console.log('oninactive', event);
+    };
 }
 
 function channelSend(data) {
@@ -230,23 +251,25 @@ var start = window.setInterval(function () {
     }
 }, 3000);
 
-function showMsgToPanel(message, me) {
+function showMsgToPanel(data, me) {
     if (me) {
-        $("#panel .panel-body").append("<p class='text-right'>" + message + "</p>");
+        $("#panel .panel-body").append("<p class='text-right'>" + data.message + " : me</p>");
     } else {
-        $("#panel .panel-body").append("<p class='text-left'>" + message + "</p>");
+        $("#panel .panel-body").append("<p class='text-left'>" + data.username + " : " + data.message + "</p>");
     }
     $("#panel .panel-body").scrollTop(Number.MAX_VALUE);
 }
 
 function onMsg(msg) {
     if (msg) {
-        showMsgToPanel(msg, false);
+        showMsgToPanel(JSON.parse(msg), false);
     }
 }
+
 function sendMsg() {
-    var msg = $("#input").val();
-    channelSend(msg);
+    var msg = {username: $("#username").val(), message: $("#input").val()};
+
+    channelSend(JSON.stringify(msg));
     showMsgToPanel(msg, true);
     $("#input").val("");
 }
